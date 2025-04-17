@@ -1,0 +1,2205 @@
+---
+title: "Using tree based methods to detect customer churn and customer calue for an Iranian call centre"
+author: "Bhavana Kappala"
+date: "2025-04-16"
+output:
+  html_document:  
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    number_sections: no
+    toc_collapsed: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+  word_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    keep_md: yes
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: no
+    fig_width: 3
+    fig_height: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+
+```{=html}
+
+<style type="text/css">
+
+/* Cascading Style Sheets (CSS) is a stylesheet language used to describe the presentation of a document written in HTML or XML. it is a simple mechanism for adding style (e.g., fonts, colors, spacing) to Web documents. */
+
+h1.title {  /* Title - font specifications of the report title */
+  font-size: 22px;
+  font-weight: bold;
+  color: DarkRed;
+  text-align: center;
+  font-family: "Gill Sans", sans-serif;
+}
+h4.author { /* Header 4 - font specifications for authors  */
+  font-size: 18px;
+  font-weight: bold;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+}
+h4.date { /* Header 4 - font specifications for the date  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: DarkBlue;
+  text-align: center;
+  font-weight: bold;
+}
+h1 { /* Header 1 - font specifications for level 1 section title  */
+    font-size: 22px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: center;
+    font-weight: bold;
+}
+h2 { /* Header 2 - font specifications for level 2 section title */
+    font-size: 20px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+
+h3 { /* Header 3 - font specifications of level 3 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - font specifications of level 4 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: darkred;
+    text-align: left;
+}
+
+body { background-color:white; }
+
+.highlightme { background-color:yellow; }
+
+p { background-color:white; }
+
+</style>
+```
+
+
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+if (!require("knitr")) {
+   install.packages("knitr")
+   library(knitr)
+}
+
+if (!require("smotefamily")) {
+install.packages("smotefamily")
+library(smotefamily)  # For SMOTE
+}
+
+if (!require("MASS")) {
+install.packages("MASS")
+library(MASS)  # For StepAIC
+}
+
+if (!require("htmltools")) {
+# Update the htmltools package
+install.packages("htmltools")
+library(htmltools)
+}
+
+if (!require("plotly")) {
+install.packages("plotly")
+# Load the plotly package
+library(plotly)
+}
+
+if (!require("tidyverse")) {
+   install.packages("tidyverse")
+library(tidyverse)
+}
+if (!require("VIM")) {
+install.packages("VIM")  # For KNN imputation
+library(VIM)
+}
+if (!require("caret")) {
+install.packages("caret")  # For one-hot encoding
+  library(caret)
+}
+if (!require("mice")) {
+install.packages("mice")   # For multiple imputation (optional)
+library(mice)
+}
+
+
+if (!require("ipred")) {
+install.packages("ipred")    
+library(ipred)
+}
+
+
+if (!require("mlbench")) {
+install.packages("mlbench")  
+library(mlbench)
+}
+
+
+
+if (!require("randomForest")) {
+install.packages("randomForest")  
+library(randomForest)
+}
+
+
+
+if (!require("pROC")) {
+install.packages("pROC")   # For ROC Curve
+library(pROC)
+}
+if (!require("caTools")) {
+install.packages("caTools")   # For Splitting Data
+library(caTools)
+}
+
+if (!require("ggcorrplot")) {
+install.packages("ggcorrplot")  # Install if needed
+library(ggcorrplot)
+}
+
+
+if (!require("skimr")) {
+install.packages("skimr")
+library(skimr)
+}
+
+if (!require("DataExplorer")) {
+install.packages("DataExplorer")
+library(DataExplorer)
+}
+
+if (!require("glmnet")) {
+install.packages("glmnet")
+library(glmnet)
+}
+
+
+if (!require("rpart.plot")) {
+install.packages("rpart.plot")
+library(rpart.plot)
+}
+
+if (!require("rpart")) {
+install.packages("rpart")
+library(rpart)
+}
+
+
+if (!require("pander")) {
+install.packages("pander")
+library(pander)
+}
+
+if (!require("ROCR")) {
+install.packages("ROCR")
+library(ROCR)
+}
+
+if (!require("e1071")) {
+install.packages("e1071")
+library(e1071)
+}
+## 
+knitr::opts_chunk$set(echo = TRUE,   # include code chunk in the output file
+                      warning = FALSE,# sometimes, you code may produce warning messages,
+                                      # you can choose to include the warning messages in
+                                      # the output file. 
+                      results = TRUE, # you can also decide whether to include the output
+                                      # in the output file.
+                      message = FALSE,
+                      comment = NA
+                      )  
+```
+
+## Objective
+
+The objective of this project is to apply the CART (Classification and Regression Trees) method and Random Forest to predict customer value based on continuous features and to develop a binary prediction model for customer churn. The goal is to identify key factors influencing customer behavior, optimize decision-making processes, and provide actionable insights for customer retention strategies.
+
+## Introduction
+
+### Description of Data:
+
+The dataset consists of customer information and various attributes that can be used to analyze customer behavior, predict churn, and assess customer value. The variables included are:
+
+**Call Failures**: The total number of call failures experienced by a customer, which could indicate issues with the service or network.
+
+**Complains**: A binary variable indicating whether the customer has lodged a complaint. `0` means no complaint, and `1` means the customer has made a complaint.
+
+**Subscription Length**: The total duration (in months) of the customer's subscription. This feature may give insights into customer loyalty and engagement.
+
+**Charge Amount**: An ordinal attribute representing the level of charge the customer has incurred, where `0` indicates the lowest charge and `9` represents the highest charge.
+
+**Seconds of Use**: The total number of seconds the customer has spent on calls. This continuous variable helps assess the intensity of customer use.
+
+**Frequency of Use**: The total number of calls made by the customer. This variable quantifies how frequently a customer uses the service.
+
+**Frequency of SMS**: The total number of SMS messages sent by the customer, which can reflect communication behavior and engagement with the service.
+
+**Distinct Called Numbers**: The total number of unique phone numbers called by the customer, providing insight into their calling patterns.
+
+**Age Group**: An ordinal attribute representing the customer's age group, where `1` indicates a younger age and `5` represents an older age. This can be useful in understanding how customer demographics influence behavior.
+
+**Tariff Plan**: A binary variable indicating the customer's tariff plan. `1` represents "Pay as you go" and `2` indicates a "Contractual" plan.
+
+**Status**: A binary variable that indicates whether the customer is active (`1`) or non-active (`2`). This feature can be used to assess customer engagement or identify churn.
+
+**Churn**: The class label for churn prediction, where `1` indicates a customer who has churned (discontinued the service), and `0` means a non-churn customer.
+
+**Customer Value**: A calculated value representing the overall worth of the customer based on their behavior, subscription, and usage patterns. This value can be used for segmentation and targeting.
+
+---
+
+This dataset includes both continuous and binary features, providing a mix of information on customer behavior, usage patterns, and attributes that can be utilized to predict customer churn and assess customer value.
+
+
+```{r data, include=FALSE}
+# Read the dataset from a CSV file
+df <- read.csv("https://bhavana-dotcom.github.io/Project3/data.csv")  # Replace with git file path
+
+# Sample 2000 rows
+#set.seed(123)  # Optional: Set seed for reproducibility
+#df <- data[sample(nrow(data), 1000), ]
+
+# Write the sampled data to a new CSV file
+#write.csv(df, "C:/Users/agaja/Downloads/STA 552 Project 2/sampled_data.csv", row.names = FALSE)  # Replace with your desired output file path
+#str(df)
+```
+
+
+
+```{r include=FALSE}
+
+df$Call_Failure <- as.numeric(df$Call_Failure)
+
+#summary(df$Total_debt_by_Total_networth)
+#hist(df$Total_debt_by_Total_networth, breaks = 30, main = "Distribution of Debt-to-Net Worth Ratio")
+mean_val <- mean(df$Call_Failure, na.rm = TRUE)
+sd_val <- sd(df$Call_Failure, na.rm = TRUE)
+
+
+df$Call_Failure_Group <- cut(df$Call_Failure, 
+                      breaks = c(-Inf, mean_val - sd_val, mean_val + sd_val, Inf), 
+                      labels = c("Low", "Moderate", "High"))
+
+#df$Call_Failure_Group <- as.factor(df$Call_Failure_group)
+#str(df)
+
+```
+
+```{r include=FALSE}
+
+# Function to count missing values in all variables
+count_missing_values <- function(data) {
+  data %>%
+    mutate(across(where(is.character), ~ na_if(., ""))) %>%
+    summarise_all(~ sum(is.na(.))) %>%
+    pivot_longer(everything(), names_to = "variable", values_to = "missing_count")
+}
+# Use the function
+missing_values <- count_missing_values(df)
+
+print(missing_values)
+```
+
+## Relationship between Features
+
+**Correlation Plot**
+
+The correlation plot shows strong positive relationships between `Seconds_of_Use`, `Frequency_of_use`, and `Frequency_of_SMS`, indicating potential multicollinearity. These usage-related features are moderately correlated with `Customer_Value` (~0.42), suggesting they are useful predictors. `Age` has a slight negative correlation with `Customer_Value` (-0.22), while other variables like `Complains` and `Subscription_Length` show weak or no correlation. The high correlation between some predictors may affect CART models but is generally manageable with Random Forest.
+
+
+```{r}
+df_num <- df
+#df_num$Churn <- as.numeric(as.factor(df_num$Churn))
+numeric_features <- df_num %>% select_if(is.numeric)
+# Compute correlation matrix
+cor_matrix <- cor(numeric_features, use = "complete.obs")
+
+# Plot heatmap
+ggcorrplot(cor_matrix, method = "circle", type = "lower", lab = TRUE)
+
+```
+
+
+## Relationship between Features
+
+**Relationship between highly correlated numerical features using Scatter Plot**
+
+The scatter plot shows a clear positive relationship between the number of SMS messages sent and Customer Value. As SMS frequency increases, customer value tends to rise, though the data points form distinct bands, possibly indicating customer segmentation or pricing plans. This trend suggests SMS usage is a strong predictor of customer value and can be valuable for churn or value-based modeling.
+
+
+```{r}
+# Scatter plot using ggplot2
+ggplot(df, aes(x=Frequency_of_SMS, y=Customer_Value)) +
+  geom_point(color="blue", alpha=0.5) +
+  ggtitle(" The total number of SMS messages sent by the customer vs Customer Value ") +
+  xlab(" Frequency of SMS ") +
+  ylab("Customer Value")
+
+```
+
+
+**Relationship between Target Variable and a categorical feature using heatmap**
+
+
+The heatmap shows that most customers, both churned (1) and retained (0), fall within Age Group 3 (middle-aged segment), followed by Group 2. Older (Group 4–5) and younger (Group 1) age groups have fewer customers. This suggests age distribution is skewed toward middle-aged users, but churn behavior appears relatively consistent across age groups without a strong age-based pattern.
+
+
+```{r}
+df$Churn <- as.factor(df$Churn)
+df$Age_Group <- as.factor(df$Age_Group)
+
+heatmap_data <- df %>%
+  count(Churn, Age_Group)
+
+ggplot(heatmap_data, aes(x = Churn, y = Age_Group , fill = n)) +
+  geom_tile() +
+  labs(title = "Heatmap: Customer Churn Status vs Customer's Age Group ",
+       x = "Churn Status", y = "Age Group (1- Younger to 5- Older)") +
+  scale_fill_gradient(low = "white", high = "red") +
+  theme_minimal()
+```
+
+**Box Plot**
+
+The boxplot shows that customers who did not churn tend to have significantly higher customer value compared to those who churned, indicating a negative relationship between customer value and churn likelihood.
+
+
+```{r}
+
+# Box Plot: Relationship between Churn Status (Categorical) and  Customer Value (Numerical)
+ggplot(df, aes(x = Churn, y = Customer_Value, fill = Churn)) +
+  geom_boxplot() +
+  labs(title = "Box Plot: Churn Status vs Customer Value",
+       x = " Churn ", y = "Customer Value") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3")
+
+```
+
+## Skewness
+
+Most of these variables are right-skewed, with a majority of values concentrated in lower ranges and a small number of extreme values. These skewed distributions may need transformation for better model performance.
+
+```{r}
+#str(df)
+
+df$Charge_Amount <- as.factor(df$Charge_Amount)
+df$Age_Group <- as.factor(df$Age_Group)
+df$Tariff_Plan <- as.factor(df$Tariff_Plan)
+df$Status <- as.factor(df$Status)
+df$Churn <- as.factor(df$Churn)
+
+# Select only numeric columns
+numeric_vars <- df[, sapply(df, is.numeric)]
+# Compute skewness for each numeric variable
+skewness_values <- sapply(numeric_vars, skewness, na.rm = TRUE)
+
+# Identify highly skewed variables
+skewed_vars <- names(skewness_values[abs(skewness_values) > 1])
+
+# Print results
+#print("Skewness values:")
+#print(skewness_values)
+print("Highly skewed variables:")
+print(skewed_vars)
+# Create a histogram for Skewed Numeric Variable - No of Credit Accounts
+#hist(numeric_vars$No_of_credit_acc, main = "Histogram of No of Credit Accounts", xlab = "No of Credit Accounts",      col = "lightblue",      breaks = 30)
+
+
+```
+
+## Feature Engineering
+
+**Transformation, Normalization & Standardization**
+
+
+```{r}
+
+df$Call_Failure = as.numeric(df$Call_Failure)
+df$Subscription_Length = as.numeric(df$Subscription_Length)
+df$Age = as.numeric(df$Age)
+df$Seconds_of_Use = as.numeric(df$Seconds_of_Use)
+df$Frequency_of_use = as.numeric(df$Frequency_of_use)
+df$Frequency_of_SMS = as.numeric(df$Frequency_of_SMS)
+df$Distinct_Called_Numbers = as.numeric(df$Distinct_Called_Numbers)
+df$Customer_Value = as.numeric(df$Customer_Value)
+df$Complains = as.numeric(df$Complains)
+
+#str(df)
+
+df_trans <- df %>%
+  mutate(
+    Call_Failure_trans = log1p(Call_Failure),
+    Subscription_Length_trans = log1p(Subscription_Length),
+    Age_trans = log1p(Age),
+    Seconds_of_Use_trans = log1p(Seconds_of_Use),
+    Frequency_of_use_trans = log1p(Frequency_of_use),
+    Frequency_of_SMS_trans = log1p(Frequency_of_SMS),
+    Distinct_Called_Numbers_trans = log1p(Distinct_Called_Numbers),
+    Customer_Value_trans = log1p(Customer_Value),
+    Complains_trans = log1p(Complains)
+  )
+
+
+
+# Normalization
+normalize <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+
+df_norm <- df_trans 
+
+df_norm$Call_Failure_trans_norm = normalize(df_norm$Call_Failure_trans)
+df_norm$Subscription_Length_trans_norm = normalize(df_norm$Subscription_Length_trans)
+df_norm$Age_trans_norm = normalize(df_norm$Age_trans)
+df_norm$Seconds_of_Use_trans_norm = normalize(df_norm$Seconds_of_Use_trans)
+df_norm$Frequency_of_use_trans_norm = normalize(df_norm$Frequency_of_use_trans)
+df_norm$Frequency_of_SMS_trans_norm = normalize(df_norm$Frequency_of_SMS_trans)
+df_norm$Distinct_Called_Numbers_trans_norm = normalize(df_norm$Distinct_Called_Numbers_trans)
+df_norm$Customer_Value_trans_norm = normalize(df_norm$Customer_Value_trans)
+df_norm$Complains_trans_norm = normalize(df_norm$Complains_trans)
+
+
+# Custom Standardization function
+standardize <- function(x) {
+  if (is.numeric(x)) {
+    return((x - mean(x)) / sd(x))  # Standardize only numeric columns
+  } else {
+    return(x)  # If the column is not numeric, return it as is
+  }
+}
+
+# Create a copy for standardized data
+df_stan <- df_norm
+
+
+df_stan$Call_Failure_stan = standardize(df_stan$Call_Failure_trans)
+df_stan$Subscription_Length_stan = standardize(df_stan$Subscription_Length_trans)
+df_stan$Age_stan = standardize(df_stan$Age_trans)
+df_stan$Seconds_of_Use_stan = standardize(df_stan$Seconds_of_Use_trans)
+df_stan$Frequency_of_use_stan = standardize(df_stan$Frequency_of_use_trans)
+df_stan$Frequency_of_SMS_stan = standardize(df_stan$Frequency_of_SMS_trans)
+df_stan$Distinct_Called_Numbers_stan = standardize(df_stan$Distinct_Called_Numbers_trans)
+df_stan$Customer_Value_stan = standardize(df_stan$Customer_Value_trans)
+df_stan$Complains_stan = standardize(df_stan$Complains_trans)
+
+
+# View structure
+#str(df_stan)
+
+
+```
+
+
+## Principal Component Analysis
+
+Based on the results of Principal Component Analysis (PCA), it appears that using the first few principal components (PCs) can be beneficial for dimensionality reduction. The first few components (PC1 to PC5) account for a significant proportion of the variance, with PC1 alone explaining 20.34% and the first five PCs cumulatively explaining about 47.87%. As we move to later components, the proportion of variance explained decreases rapidly, with PCs beyond PC10 contributing very little.
+
+Therefore, reducing the data to the first few components would capture the majority of the variance while simplifying the model, making PCA a useful technique for dimensionality reduction in this case. However, components after PC10 contribute minimally and may not provide additional insights.
+
+```{r}
+#str(df_pca)
+
+df_pca <- df_stan %>%
+  select(Call_Failure_stan,
+         Subscription_Length_stan,
+         Age_stan,
+         Seconds_of_Use_stan,
+         Frequency_of_use_stan,
+         Frequency_of_SMS_stan,
+         Distinct_Called_Numbers_stan,
+         Customer_Value_stan,
+         Complains_stan,
+         Charge_Amount,
+         Age_Group,                        
+         Tariff_Plan,                      
+        Status,
+        Churn)
+
+#dummies <- dummyVars(~ ., data = df_pca)
+#numeric_data <- predict(dummies, newdata = df_pca) %>% as.data.frame()
+
+
+#str(df_numeric)
+
+# Step 1: Convert categorical variables to numeric using one-hot encoding
+df_numeric <- df_pca %>%
+ mutate(across(c(Age_Group,                        
+         Tariff_Plan,                      
+        Status,
+        Churn), as.factor)) %>%  # Convert to factors
+   dummyVars(~ ., data = .) %>%      
+  predict(newdata = df_pca) %>% 
+   as.data.frame()
+ 
+ # Step 2: Select only numeric features
+ numeric_data <- df_numeric %>% select_if(is.numeric)
+ 
+ # Step 3: Handle missing and infinite values
+ numeric_data[is.na(numeric_data)] <- 0   # Replace NAs with 0 (or use median imputation)
+ 
+
+
+constant_cols <- apply(numeric_data, 2, function(col) var(col, na.rm = TRUE) == 0)
+numeric_data <- numeric_data[, !constant_cols]
+
+ 
+# Step 4: Standardize the data (only after handling missing values)
+ scaled_data <- scale(numeric_data)
+ 
+ # Step 5: Perform PCA
+ pca_result <- prcomp(scaled_data, center = TRUE, scale = TRUE)
+ 
+ summary(pca_result)
+ 
+ # Step 6: Scree Plot (to decide number of components to keep)
+ screeplot(pca_result, type = "lines", main = "Scree Plot")
+ 
+ # Step 7: Biplot (PCA visualization)
+# biplot(pca_result, scale = 0)
+ 
+ # Step 8: Scatter plot of first two principal components
+ pca_df <- as.data.frame(pca_result$x)
+ ggplot(pca_df, aes(x = PC1, y = PC2)) +
+   geom_point(size = 3, alpha = 0.7, color = "blue") +
+ labs(title = "PCA - First Two Principal Components") +
+   theme_minimal()
+
+```
+
+## CART Based Algorithms
+
+### CART: Classification
+
+*Grow and initial tree*
+
+This CART decision tree model classifies customers based on behavioral and subscription metrics to predict a binary outcome (e.g., churn vs. no churn). The most influential variable is Complain_stan; customers with fewer complaints are more likely to stay (class 0). Among those with low complaints, Status, Subscription_Length_stan, and Seconds_of_Use_stan further separate loyal users from potential churners. Longer subscriptions and higher usage correlate with class 0. On the other hand, customers with high complaint scores and low values in Frequency_of_Use_stan, Customer_Value_stan, and Subscription_Length_stan are classified as class 1, indicating a higher risk of churn. Leaf nodes show the final classification and confidence based on percentage purity, with green indicating class 0 and blue indicating class 1.
+
+
+```{r}
+
+# Load necessary libraries
+# library(rpart)        # For decision trees
+# library(rpart.plot)   # For visualizing trees
+# library(caret)        # For model evaluation
+# library(pROC)         # For ROC analysis
+
+#str(callcenter.data)
+
+# Load the dataset
+callcenter.data <- df_stan %>%
+  select(Call_Failure_stan,
+         Subscription_Length_stan,
+         Age_stan,
+         Seconds_of_Use_stan,
+         Frequency_of_use_stan,
+         Frequency_of_SMS_stan,
+         Distinct_Called_Numbers_stan,
+         Customer_Value_stan,
+         Complains_stan,
+         Charge_Amount,
+         Age_Group,                        
+         Tariff_Plan,                      
+        Status,
+        Churn)
+
+# Split data into training (70%) and test (30%) sets
+set.seed(123)
+train.index <- createDataPartition(callcenter.data$Churn, p = 0.7, list = FALSE)
+train.data <- callcenter.data[train.index, ]
+test.data <- callcenter.data[-train.index, ]
+
+# Build the initial classification tree
+tree.model <- rpart(Churn ~ ., 
+                    data = train.data,
+                    method = "class",   # classification tree
+                    parms = list(split = "gini",  # Using Gini index
+                                 # FN cost = 1, FP cost = 0.5
+                                 loss = matrix(c(0, 0.5, 1, 0), nrow = 2)  
+                                 ),
+                    control = rpart.control(minsplit = 15,  # Min 15 obs to split
+                                           minbucket = 5,   # Min 7 obs in leaf
+                                           # Complexity parameter
+                                           cp = 0.001, # complex parameter
+                                           maxdepth = 5))   # Max tree depth
+
+#table(callcenter.data$Churn)
+
+
+```
+
+
+```{r}
+
+rpart.plot(tree.model, 
+           extra = 104, # check the help document for more information
+           # color palette is a sequential color scheme that blends green (G) to blue (Bu)
+           box.palette = "GnBu",  
+           branch.lty = 1, 
+           shadow.col = "gray", 
+           nn = TRUE)
+
+```
+
+
+
+```{r}
+
+
+
+# Print the complexity parameter table
+pander(tree.model$cptable)
+
+
+```
+
+```{r}
+
+
+# Plot the cross-validation results
+plotcp(tree.model)
+
+
+```
+
+The two decision trees are structurally and visually identical, with splitting on the same features in the same order and producing the same terminal node predictions and class distributions. This indicates that the models—likely representing the minimum cp and best(1-SE) cp pruned trees—have converged to the same solution, meaning that increasing model complexity beyond the best cp does not improve predictive accuracy or alter the decision logic. As a result, both models yield the same prediction results, reflecting a stable and robust relationship between the predictors and the target variable in the dataset.
+
+```{r}
+# Get the minimum cross-validation error and its corresponding cp
+min.cp <- tree.model$cptable[which.min(tree.model$cptable[, "xerror"]), "CP"]
+
+# Prune the tree using the optimal cp
+pruned.tree.1SE <- prune(tree.model, cp = 0.017)  
+pruned.tree.min <- prune(tree.model, cp = min.cp)
+
+
+
+
+# Visualize the pruned tree
+rpart.plot(pruned.tree.1SE, 
+           extra = 104, # check the help document for more information
+           # color palette is a sequential color scheme that blends green (G) to blue (Bu)
+           box.palette = "GnBu",  
+           branch.lty = 1, 
+           shadow.col = "gray", 
+           nn = TRUE)
+
+
+
+```
+
+```{r}
+
+# Visualize the pruned tree
+rpart.plot(pruned.tree.min, 
+           extra = 104, # check the help document for more information
+           # color palette is a sequential color scheme that blends green (G) to blue (Bu)
+           box.palette = "GnBu",  
+           branch.lty = 1, 
+           shadow.col = "gray", 
+           nn = TRUE)
+
+```
+
+**Optimal Cut-off Probability:**
+
+This plot shows the relationship between different probability cutoff values and the resulting misclassification cost. The goal is to find the cutoff that minimizes this cost. The optimal cutoff identified is 0.1667, which corresponds to the lowest misclassification cost on the graph (around 2000 units). At very low or high cutoffs, the cost spikes significantly, indicating poor classification performance. Thus, using a cutoff of 0.1667 helps balance false positives and false negatives in a cost-effective way, which is especially useful in imbalanced classification problems like churn prediction.
+
+```{r}
+
+# Predictive probabilities of pruned tree model
+pred.prob.min <- predict(pruned.tree.min, train.data, type = "prob")[,2]
+
+# Initialize cost variable
+cost <- NULL
+cutoff <- seq(0, 1, length = 10)
+
+# Loop through different cutoff values
+for (i in 1:10) {
+  # Classify based on the cutoff
+  pred.label <- ifelse(pred.prob.min > cutoff[i], "1", "0")  # Use "1" for pos and "0" for neg
+  
+  # Calculate FN (False Negatives) and FP (False Positives)
+  FN <- sum(pred.label == "0" & train.data$Churn == "1")  # False negatives (Churn = 1, predicted as 0)
+  FP <- sum(pred.label == "1" & train.data$Churn == "0")  # False positives (Churn = 0, predicted as 1)
+  
+  # Calculate the cost (5*FP + 20*FN)
+  cost[i] = 5*FP + 20*FN
+}
+
+# Identify optimal cutoff that minimizes the cost
+min.ID <- which(cost == min(cost))   # Could have multiple minimum values
+optim.prob <- mean(cutoff[min.ID])   # Take the average of the cutoff values
+
+# Plot cutoff vs misclassification cost
+plot(cutoff, cost, type = "b", col = "navy", main = "Cutoff vs Misclassification Cost")
+text(0.2, 3500, paste("Optimal cutoff:", round(optim.prob, 4)), cex = 0.8)
+
+
+```
+```{r}
+
+
+# Make predictions on the test set
+pred.label.1SE <- predict(pruned.tree.1SE, test.data, type = "class") # default cutoff 0.5
+pred.prob.1SE <- predict(pruned.tree.1SE, test.data, type = "prob")[,2]
+##
+pred.label.min <- predict(pruned.tree.min, test.data, type = "class") # default cutoff 0.5
+pred.prob.min <- predict(pruned.tree.min, test.data, type = "prob")[,2]
+
+# Confusion matrix
+#conf.matrix <- confusionMatrix(pred.label, test.data$diabetes, positive = "pos")
+#print(conf.matrix)
+
+########################
+###  logistic regression
+logit.fit <- glm(Churn ~ ., data = train.data, family = binomial)
+AIC.logit <- step(logit.fit, direction = "both", trace = 0)
+pred.logit <- predict(AIC.logit, test.data, type = "response")
+
+# ROC curve and AUC
+roc.tree.1SE <- roc(test.data$Churn, pred.prob.1SE)
+roc.tree.min <- roc(test.data$Churn, pred.prob.min)
+roc.logit <- roc(test.data$Churn, pred.logit)
+
+##
+### Sen-Spe
+tree.1SE.sen <- roc.tree.1SE$sensitivities
+tree.1SE.spe <- roc.tree.1SE$specificities
+#
+tree.min.sen <- roc.tree.min$sensitivities
+tree.min.spe <- roc.tree.min$specificities
+#
+logit.sen <- roc.logit$sensitivities
+logit.spe <- roc.logit$specificities
+## AUC
+auc.tree.1SE <- roc.tree.1SE$auc
+auc.tree.min <- roc.tree.min$auc
+auc.logit <- roc.logit$auc
+###
+plot(1-logit.spe, logit.sen,  
+     xlab = "1 - specificity",
+     ylab = "sensitivity",
+     col = "darkred",
+     type = "l",
+     lty = 1,
+     lwd = 1,
+     main = "ROC: CART and Logistic Regressopm")
+lines(1-tree.1SE.spe, tree.1SE.sen, 
+      col = "blue",
+      lty = 1,
+      lwd = 1)
+lines(1-tree.min.spe, tree.min.sen,      
+      col = "orange",
+      lty = 1,
+      lwd = 1)
+abline(0,1, col = "skyblue3", lty = 2, lwd = 2)
+legend("bottomright", c("Logistic", "Tree 1SE", "Tree Min"),
+       lty = c(1,1,1), lwd = rep(1,3),
+       col = c("red", "blue", "orange"),
+       bty="n",cex = 0.8)
+## annotation - AUC
+text(0.8, 0.46, paste("Logistic AUC: ", round(auc.logit,4)), cex = 0.8)
+text(0.8, 0.4, paste("Tree 1SE AUC: ", round(auc.tree.1SE,4)), cex = 0.8)
+text(0.8, 0.34, paste("Tree Min AUC: ", round(auc.tree.min,4)), cex = 0.8)
+
+```
+
+### CART: Regression
+
+CART regression analysis helps identify the optimal model complexity for accurately estimating how valuable a customer is likely to be—such as in terms of purchase behavior, lifetime value, or profitability.
+
+The chart and output show that as the model allows for more decision splits (i.e., becomes more complex), the prediction error initially decreases substantially, meaning the model is better at distinguishing between high- and low-value customers. However, beyond about 20 splits, additional complexity doesn't significantly improve predictive accuracy. This suggests that a tree of this size captures the most meaningful patterns in the data (e.g., purchase history, engagement levels, demographics) without overfitting.
+
+Therefore, the analysis indicates that a moderately complex decision tree (around 20 splits) is sufficient to reliably predict customer value. This balance helps businesses segment customers effectively and make data-driven decisions about marketing, retention, and resource allocation—focusing efforts on customers with the highest predicted value while avoiding unnecessary complexity that could reduce generalizability to new customers.
+
+
+**1. Tree Induction, 2. Splitting Criteria & 3. Stopping rule: min observations to split**
+
+```{r}
+
+# Load required packages and data
+#library(rpart)          # For regression trees
+#library(rpart.plot)     # For visualizing trees
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Split data into training (70%) and test (30%) sets
+train.index <- sample(1:nrow(callcenter.data), size = 0.7 * nrow(callcenter.data))
+train.data <- callcenter.data[train.index, ]
+test.data <- callcenter.data[-train.index, ]
+
+# Build the initial regression tree using rpart
+tree.model <- rpart(Customer_Value_stan ~ ., 
+                    data = train.data,
+                    method = "anova",     # For regression
+                    control = rpart.control(
+                      minsplit = 20,    # 3. Stopping rule: min observations to split
+                      minbucket = 7,    # Min observations in terminal node
+                      cp = seq(0, 0.05, 20), # Complexity parameter
+                      maxdepth = 5      # Maximum tree depth
+                    ))
+
+# Visualize the unpruned tree
+rpart.plot(tree.model, main = "Initial Regression Tree")
+```
+
+**4. Pruning Process**
+
+```{r}
+
+# Examine cross-validation results
+pander(tree.model$cptable)
+
+```
+
+
+```{r}
+plotcp(tree.model)
+
+```
+
+Best and Minimum CP Pruned Regression Trees:
+
+
+Focus on Usage Patterns: Both trees heavily use features related to the frequency and duration of customer interactions, such as 'Frequency_of_SMS_stan' and 'Seconds_of_Use_stan.' These are strong indicators, as decreased engagement is often a precursor to churn.
+
+CP Value and Overfitting: With a CP of 5e-04, the pruned tree avoids overfitting by removing less significant splits. This means the model will likely generalize better to new customers.
+
+Feature Importance: The initial tree uses more detailed splits, including factors like 'Subscription_Length_stan' and 'Age_Group.' However, the pruning process retains only the most crucial predictors, suggesting that while factors such as 'Subscription_Length_stan' and 'Age_Group' can provide more specific segmentation, 'Frequency_of_SMS_stan' and 'Seconds_of_Use_stan' are reliable in predicting churn across the customer base.
+
+Interpretability: The pruned tree simplifies the churn prediction model, highlighting the key factors driving churn in a more straightforward manner. This makes it easier to develop targeted retention strategies based on these features.
+
+General Trends: High values of 'Frequency_of_SMS_stan' and 'Seconds_of_Use_stan' are associated with a negative correlation with churn status and suggest that customers who are actively using these services are less likely to churn
+
+
+```{r}
+
+cp.table <- tree.model$cptable
+
+## Identify the minimum `xerror` and its `cp`.
+min.xerror <- min(cp.table[, "xerror"])
+min.cp.row <- which.min(cp.table[, "xerror"])
+min.cp <- cp.table[min.cp.row, "CP"]
+
+## Get the standard error (`xstd`) of the minimum `xerror`
+xerror.std <- cp.table[min.cp.row, "xstd"]
+threshold <- min.xerror + xerror.std  # Upper bound (1 SE rule)
+
+## Find the simplest tree (`cp`) Where `xerror less than or equal to Threshold`.
+best.cp.row <- which(cp.table[, "xerror"] <= threshold)[1]  # First row meeting criteria
+best.cp <- cp.table[best.cp.row, "CP"]
+
+## Two different trees: best CP vs minimum CP
+pruned.tree.best.cp <- prune(tree.model, cp = best.cp)
+pruned.tree.min.cp <- prune(tree.model, cp = min.cp)
+
+# Visualize the pruned tree: best CP
+rpart.plot(pruned.tree.best.cp, main = paste("Pruned Tree (Best CP): cp = ", round(best.cp,4)))
+# Visualize the pruned tree: minimum CP
+rpart.plot(pruned.tree.min.cp, main = paste("Pruned Tree (Minimum CP): cp = ", round(min.cp,4)))
+
+```
+
+**5. Prediction:**
+
+In predicting customer value using CART regression, the model with the minimum complexity parameter (`tree.min.cp`) achieved the best performance, with an RMSE of 0.1848 and R² of 0.9669, indicating high predictive accuracy and that it explains nearly 97% of the variance in customer value. The slightly simpler `tree.best.cp` model performs almost as well, offering a good balance between accuracy and model complexity. In contrast, the `lse01` and `lse02` models, chosen for simplicity under the 1-SE rule, are less accurate (R² = 0.7658 and 0.9413, respectively) but may be preferred for interpretability when presenting insights to non-technical stakeholders.
+
+```{r}
+
+# Make predictions on test data
+pred.best.cp <- predict(pruned.tree.best.cp, newdata = test.data)
+pred.min.cp <- predict(pruned.tree.min.cp, newdata = test.data)
+
+
+# Evaluate model performance: best.cp
+mse.tree.best.cp <- mean((test.data$Customer_Value_stan - pred.best.cp)^2)
+rmse.tree.best.cp <- sqrt(mse.tree.best.cp)
+r.squared.tree.best.cp <- cor(test.data$Customer_Value_stan, pred.best.cp)^2
+# min.cp
+mse.tree.min.cp <- mean((test.data$Customer_Value_stan - pred.min.cp)^2)
+rmse.tree.min.cp <- sqrt(mse.tree.min.cp)
+r.squared.tree.min.cp <- cor(test.data$Customer_Value_stan, pred.min.cp)^2
+
+##
+# fit ordinary least square regression 
+LSE01 <- lm(Customer_Value_stan ~ Call_Failure_stan+ Frequency_of_use_stan+ Subscription_Length_stan+ Age_stan+ Seconds_of_Use_stan , data = train.data)
+pred.lse01 <-  predict(LSE01, newdata = test.data)
+mse.lse01 <- mean((test.data$Customer_Value_stan - pred.lse01)^2)
+rmse.lse01 <- sqrt(mse.lse01)
+r.squared.lse01 <- cor(test.data$Customer_Value_stan, pred.lse01)^2
+
+##
+## ordinary LSE regression model with step-wise variable selection
+lse02.fit <- lm(Customer_Value_stan~.,data = train.data)
+AIC.fit <- stepAIC(lse02.fit, direction="both", trace = FALSE)
+pred.lse02 <- predict(AIC.fit, test.data)
+mse.lse02 <- mean((test.data$Customer_Value_stan - pred.lse02)^2)    # mean square error
+rmse.lse02 <- sqrt(mse.lse02)                       # root mean square error
+r.squared.lse02 <- (cor(test.data$Customer_Value_stan, pred.lse02))^2 # r-squared
+
+###
+Errors <- cbind(MSE = c(mse.tree.best.cp, mse.tree.min.cp, mse.lse01, mse.lse02),
+                RMSE = c(rmse.tree.best.cp, rmse.tree.min.cp, rmse.lse01, rmse.lse02),
+                r.squared = c(r.squared.tree.best.cp, r.squared.tree.min.cp, r.squared.lse01, r.squared.lse02))
+rownames(Errors) = c("tree.best.cp", "tree.min.cp", "lse01", "lse02")
+pander(Errors)
+
+```
+
+**6. Variable Importance for Best CP and Minimum CP**
+
+
+
+```{r}
+
+# Variable importance
+importance <- pruned.tree.best.cp$variable.importance
+barplot(sort(importance, decreasing = TRUE), 
+        main = "Variable Importance: Best CP",
+        las = 2)
+
+```
+
+```{r}
+
+# Variable importance
+importance <- pruned.tree.min.cp$variable.importance
+barplot(sort(importance, decreasing = TRUE), 
+        main = "Variable Importance: Minimum CP",
+        las = 2)
+
+```
+
+
+```{r}
+pander(summary(AIC.fit)$coef)
+```
+## Bootstrap Aggregation
+
+### Bagging Regression
+
+The performance of different models for predicting customer churn was evaluated using MAE, RMSE, and R-squared values. The bagged tree model achieved a high R-squared of 0.9452, with an MAE of 0.2272 and an RMSE of 0.1703, indicating strong predictive accuracy. The tree with minimum complexity parameter (tree.min.cp) showed slightly better precision, with an MAE of 0.1432 and an R-squared of 0.9537, although it had a higher RMSE of 0.2088. The least squares estimation (lse) model provided comparable results, with an MAE of 0.1647 and an R-squared of 0.9451. Overall, the tree with minimum complexity parameter performed slightly better in terms of MAE, suggesting it as the most precise model for customer churn prediction.
+
+**Hyperparameter Tuning**
+
+```{r}
+
+# Load required packages
+#library(mlbench)
+#library(caret)
+#library(ipred)
+#library(rpart)
+
+
+
+# Split the data
+set.seed(123)
+train.index <- createDataPartition(callcenter.data$Customer_Value_stan, p = 0.8, list = FALSE)
+train.data <- callcenter.data[train.index, ]
+test.data <- callcenter.data[-train.index, ]
+
+# Set up train control for cross-validation
+ctrl <- trainControl(
+  method = "cv",
+  number = 5,
+  verboseIter = TRUE
+)
+
+# Define parameter combinations to test
+nbagg.values <- c(10, 25, 50)     # number bagged trees
+cp.values <- c(0.01, 0.05, 0.1)   # candidate cp values
+maxdepth.values <- c(5, 10, 20)   # maximum depth of the candidate tree
+
+# Create an empty data frame to store results
+results <- data.frame()
+######## Model tuning
+# Manual tuning loop
+for (nbagg in nbagg.values) {
+  for (cp in cp.values) {
+    for (maxdepth in maxdepth.values) {
+      set.seed(123)
+      model <- bagging(
+        Customer_Value_stan ~ .,
+        data = train.data,
+        nbagg = nbagg,
+        coob = TRUE,
+        trControl = ctrl,
+        control = rpart.control(cp = cp, 
+                                maxdepth = maxdepth)
+       )
+      # Get OOB error from each iteration
+      oob.error <- model$err
+      # Store results
+      results <- rbind(results, 
+                       data.frame( nbagg = nbagg,
+                                   cp = cp,
+                                   maxdepth = maxdepth,
+                                   oob.error = oob.error))
+    }
+  }
+}
+# Find the best combination that yields the minimum out-of-bag's error
+best.params <- results[which.min(results$oob.error), ]
+pander(best.params)
+
+
+```
+
+**Final Model Identification**
+
+
+```{r}
+
+final.model <- bagging(
+  Customer_Value_stan ~ .,
+  data = train.data,
+  nbagg = best.params$nbagg,
+  coob = TRUE,
+  trControl = ctrl,
+  control = rpart.control(cp = best.params$cp, 
+                          maxdepth = best.params$maxdepth),
+  
+  importance = TRUE
+)
+
+# Evaluate on test set
+predictions <- predict(final.model, newdata = test.data)
+## Using the caret function to calculate errors across re-samples
+baggedError <- postResample(pred = predictions, obs = test.data$Customer_Value_stan)
+pander(baggedError)
+
+```
+
+
+**Variable Importance**
+In the context of predicting customer churn or customer value, frequency of SMS, frequency of use, distinct called numbers, and seconds of use are key features that can provide insights into customer behavior and engagement. Their prominence in the variable importance ranking indicates that these features are highly predictive of customer value or churn.
+
+Overall, these features suggest that customers who engage more with the service (through SMS, calls, and overall usage) are likely more valuable and less likely to churn. High engagement typically indicates a higher customer lifetime value, as these customers are more dependent on and satisfied with the service. The model’s focus on these variables highlights the importance of active and frequent usage as strong predictors of customer retention and value.
+
+
+```{r}
+
+##
+var.imp <- varImp(final.model)
+# Extract variable importance (requires a custom function)
+get.bagging.importance <- function(model) {
+  # Get all the trees from the bagging model
+  trees <- model$mtrees
+  
+  # Initialize importance vector
+  imp <- numeric(length(trees[[1]]$btree$variable.importance))
+  names(imp) <- names(trees[[1]]$btree$variable.importance)
+  
+  # Sum importance across all trees
+  for(tree in trees) {
+    imp[names(tree$btree$variable.importance)] <- 
+      imp[names(tree$btree$variable.importance)] + 
+      tree$btree$variable.importance
+  }
+  
+  # Average importance
+  imp <- imp/length(trees)
+  return(imp)
+}
+
+
+# Get importance
+importance.scores <- get.bagging.importance(final.model)
+
+# Sort and plot
+importance.scores <- sort(importance.scores, decreasing = TRUE)
+par(mar = c(5, 15, 4, 2))  # Bottom, left, top, right
+barplot(importance.scores, horiz = TRUE, las = 2,
+        main = "Variable Importance - Bagging (ipred)",
+        xlab = "Importance Score")
+
+```
+
+**Performance Comparison:**
+
+
+```{r}
+
+##
+## ordinary LSE regression model with step-wise variable selection
+lse.fit <- lm(Customer_Value_stan~.,data = train.data)
+AIC.fit <- stepAIC(lse.fit, direction="both", trace = FALSE)
+##
+pred.lse <- predict(AIC.fit, test.data)
+mae.lse <- mean(abs(test.data$Customer_Value_stan - pred.lse)) # mean absolutesquare error
+mse.lse <- mean((test.data$Customer_Value_stan - pred.lse)^2)  # mean square error
+rmse.lse <- sqrt(mse.lse)                       # root mean square error
+r.squared.lse <- (cor(test.data$Customer_Value_stan, pred.lse))^2 # r-squared
+##
+# Base regression tree
+tree.model <- rpart(Customer_Value_stan ~ ., 
+                    data = train.data,
+                    method = "anova",     # For regression
+                    control = rpart.control(
+                      minsplit = 20,    # 3. Stopping rule: min observations to split
+                      minbucket = 7,    # Min observations in terminal node
+                      cp = seq(0, 0.05, 20), # Complexity parameter
+                      maxdepth = 5      # Maximum tree depth
+                    ))
+# cp table
+cp.table <- tree.model$cptable
+##
+## Identify the minimum `xerror` and its `cp`.
+min.xerror <- min(cp.table[, "xerror"])
+min.cp.row <- which.min(cp.table[, "xerror"])
+min.cp <- cp.table[min.cp.row, "CP"]
+##
+pruned.tree.min.cp <- prune(tree.model, cp = min.cp)
+pred.min.cp <- predict(pruned.tree.min.cp, newdata = test.data)
+##
+# min.cp
+mae.tree.min.cp <- mean(abs(test.data$Customer_Value_stan - pred.min.cp))
+mse.tree.min.cp <- mean((test.data$Customer_Value_stan - pred.min.cp)^2)
+rmse.tree.min.cp <- sqrt(mse.tree.min.cp)
+r.squared.tree.min.cp <- cor(test.data$Customer_Value_stan, pred.min.cp)^2
+##
+###
+Errors <- cbind(MAE = c(baggedError[1], mae.tree.min.cp, mae.lse),
+          RMSE = c(baggedError[3], rmse.tree.min.cp, rmse.lse),
+          r.squared = c(baggedError[2], r.squared.tree.min.cp, r.squared.lse))
+rownames(Errors) = c("bagged Tree", "tree.min.cp", "lse")
+pander(Errors)
+
+```
+
+
+### Bagging Classification:
+
+The bagging classification model was optimized using a grid search, and the best-performing hyperparameters were: 100 trees, minsplit = 5, maxdepth = 20, and cp = 0.001. Using these parameters, the final model was trained and evaluated on the test set. The confusion matrix shows 776 true negatives, 121 true positives, 27 false positives, and 20 false negatives, indicating that the model performed well in correctly identifying both churn and non-churn customers. The relatively low number of misclassifications suggests strong overall predictive accuracy, with good balance between sensitivity and specificity.
+
+
+**Hyperparameter tuning**
+
+```{r}
+# Load necessary libraries
+# library(caret)     # For machine learning functions
+# library(ipred)     # For bagging implementation
+# library(rpart)     # For decision trees (default base learner)
+# library(mlbench)   # Contains the Pima Indians Diabetes dataset
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Split data into training and testing sets
+trainIndex <- createDataPartition(callcenter.data$Churn, p = 0.7, list = FALSE)
+trainData <- callcenter.data[trainIndex, ]
+testData <- callcenter.data[-trainIndex, ]
+
+# Create a grid of hyperparameter combinations
+hyper.grid <- expand.grid(
+  nbagg = c(25, 50, 100),
+  minsplit = c(5, 10, 20),
+  maxdepth = c(5, 10, 20),
+  cp = c(0.01, 0.001)
+)
+# Initialize a results data frame
+results <- data.frame() # store values of tuned hyperparameters
+best.accuracy <- 0      # store accuracy
+best.params <- list()   # store best values of hyperparameter
+
+# Loop through each hyperparameter combination
+for(i in 1:nrow(hyper.grid)) {
+  # Get current hyperparameters
+  params <- hyper.grid[i, ]
+  
+  # Set rpart control parameters
+  rpart.control <- rpart.control(
+    minsplit = params$minsplit,
+    maxdepth = params$maxdepth,
+    cp = params$cp
+  )
+  
+  # Train bagging model
+  bag.model <- bagging(
+    Churn ~ .,
+    data = trainData,
+    nbagg = params$nbagg,
+    coob = TRUE,
+    control = rpart.control
+  )
+  
+  # Make predictions: default cut-off 0.5
+  preds <- predict(bag.model, newdata = testData)
+  
+  # Calculate accuracy
+  cm <- confusionMatrix(preds, testData$Churn)
+  accuracy <- cm$overall["Accuracy"]
+  
+  # Store results
+  results <- rbind(results, data.frame(
+    nbagg = params$nbagg,
+    minsplit = params$minsplit,
+    maxdepth = params$maxdepth,
+    cp = params$cp,
+    Accuracy = accuracy
+  ))
+  
+  # Update best parameters if current model is better
+  if(accuracy > best.accuracy) {
+    best.accuracy <- accuracy
+    best.params <- params
+  }
+  
+  # Print progress
+  #cat("Completed", i, "of", nrow(hyper.grid), "combinations\n")
+}
+pander(best.params)
+
+```
+
+**Final Model Training with Best Hyperparameters**
+
+```{r}
+
+# Set rpart control with best parameters
+best.control <- rpart.control(
+  minsplit = best.params$minsplit,
+  maxdepth = best.params$maxdepth,
+  cp = best.params$cp
+)
+
+# Train final model
+final.bag.model <- bagging(
+  Churn ~ .,
+  data = trainData,
+  nbagg = best.params$nbagg,
+  coob = TRUE,
+  control = best.control
+)
+
+# Evaluate on test set
+final.preds <- predict(final.bag.model, newdata = testData)
+final.cm <- confusionMatrix(final.preds, testData$Churn)
+final.cm$table
+
+```
+
+
+## Random Forest
+
+### RF Regression
+
+
+The random forest regression model, tuned with 500 trees, mtry = 7, nodesize = 5, and maxnodes = 20, achieved the best RMSE of 0.1798, indicating strong predictive performance. When compared to other models for predicting customer value, random forest outperformed all others with the lowest RMSE and highest R-squared value (0.9686), suggesting it explains the most variance in the data. While the regression tree model had a slightly lower MAE, random forest provided the most balanced and robust results overall. This highlights its effectiveness in capturing complex patterns and interactions within the data, making it the most accurate model for predicting customer value among those evaluated.
+
+
+```{r}
+
+# Load required packages
+# library(randomForest)
+# library(ggplot2)
+# library(caret)
+# 
+set.seed(123)  # For reproducibility
+
+train.index <- sample(1:nrow(callcenter.data), 0.7 * nrow(callcenter.data))
+train.data <- callcenter.data[train.index, ]
+test.data <- callcenter.data[-train.index, ]
+
+
+```
+
+```{r}
+# Create a grid (data frame) of hyperparameter combinations to test
+hyper.grid <- expand.grid(
+  ntree = c(100, 300, 500),    
+  mtry = c(3, 5, 7), # Dependent on the total number features available in the data
+  nodesize = c(1, 3, 5), 
+  maxnodes = c(5, 10, 20, NULL)
+)
+##
+# Initialize results storage
+results <- data.frame()  # combination of hyperparameters and corresponding RMSE
+best.rmse <- Inf         # place-holder of RMSE with initial value inf
+best.params <- list()    # update the hyperparameter list according to the best rmse
+
+# Set up k-fold cross-validation
+k <- 5                   # 5-fold cross-validation
+n0 <- dim(train.data)[1] # size of the training data 
+fold.size <- floor(n0/k) # fold size. Caution: floor() should be used. 
+                         # round( ,0) should be used. why?
+
+# Loop through each hyperparameter combination
+for(i in 1:nrow(hyper.grid)) {           
+  current.params <- hyper.grid[i, ]   # vector of hyperparameters for cross validation
+  cv.errors <- numeric(k)             # store RMSE from cross-validation
+  
+  # Perform k-fold cross-validation
+  for(j in 1:k) {
+    # Split into training and validation folds
+    valid.indices <- (1 + fold.size*(j-1)):(fold.size*j)  # CV observation ID vector
+    cv.train <- train.data[-valid.indices, ]   # training data in cross-validation
+    cv.valid <- train.data[valid.indices, ]    # testing data in cross-validation
+    
+    # Train model with current parameters
+    rf.model <- randomForest(
+      Customer_Value_stan ~ .,
+      data = cv.train,
+      ntree = current.params$ntree,
+      mtry = current.params$mtry,
+      nodesize = current.params$nodesize,
+      maxnodes = current.params$maxnodes,
+      importance = TRUE
+    )
+    
+    # Make predictions on validation set
+    preds <- predict(rf.model, newdata = cv.valid)    
+    
+    # Calculate RMSE
+    cv.errors[j] <- sqrt(mean((preds - cv.valid$Customer_Value_stan)^2))
+  }
+  
+  # Average RMSE across folds
+  avg.rmse <- mean(cv.errors)    
+  
+  # Store results: the data frame defined to store combinations of hyperparameters
+  # and the resulting mean RMSEs from cross-validation
+  results <- rbind(results, data.frame(
+    ntree = current.params$ntree,
+    mtry = current.params$mtry,
+    nodesize = current.params$nodesize,
+    maxnodes = ifelse(is.null(current.params$maxnodes), "NULL", current.params$maxnodes),
+    rmse = avg.rmse
+  ))
+  
+  # Update best parameters if current model is better
+  if(avg.rmse < best.rmse) {
+    best.rmse <- avg.rmse
+    best.params <- current.params
+  }
+  # Print progress: It is always a good idea to print something out in loops
+  # cat(paste0("Completed ", i, "/", nrow(hyper.grid), " - RMSE: ", round(avg.rmse, 4), "\n"))
+}  
+pander(data.frame(cbind(current.params,best.rmse)))    # resulting tuned hyperparameters
+
+```
+```{r}
+
+
+# Train final model with best parameters on full training set
+final.rf <- randomForest(
+  Customer_Value_stan ~ .,
+  data = train.data,
+  ntree = best.params$ntree,
+  mtry = best.params$mtry,
+  nodesize = best.params$nodesize,
+  maxnodes = best.params$maxnodes,
+  importance = TRUE
+)
+
+# View model summary
+# print(final.rf)
+# Make predictions on test set
+test.preds <- predict(final.rf, newdata = test.data)
+
+# Calculate test RMAE
+test.mae <- mean(abs(test.preds - test.data$Customer_Value_stan))
+# Calculate test RMSE
+test.rmse <- sqrt(mean((test.preds - test.data$Customer_Value_stan)^2))
+# Calculate R-squared
+test.r2 <- 1 - sum((test.data$Customer_Value_stan - test.preds)^2) / sum((test.data$Customer_Value_stan - mean(test.data$Customer_Value_stan))^2)
+# cat("Test R-squared:", test.r2, "\n")
+
+### Performance vector
+RF.performance = c(test.mae, test.rmse, test.r2)
+
+# Plot actual vs predicted values
+plot.data <- data.frame(Actual = test.data$Customer_Value_stan, Predicted = test.preds)
+ggplot(plot.data, aes(x = Actual, y = Predicted)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  labs(title = "Actual vs Predicted Values",
+       x = "Actual Median Value ($1000s)",
+       y = "Predicted Median Value ($1000s)") +
+  theme_minimal()
+
+```
+
+
+
+**Performance comparisons**
+
+
+
+```{r}
+
+## ordinary LSE regression model with step-wise variable selection
+lse.fit <- lm(Customer_Value_stan~.,data = train.data)
+AIC.fit <- stepAIC(lse.fit, direction="both", trace = FALSE)
+pred.lse <- predict(AIC.fit, test.data)
+mae.lse <- mean(abs(test.data$Customer_Value_stan - pred.lse))      # mean absolute error
+mse.lse <- mean((test.data$Customer_Value_stan - pred.lse)^2)       # mean square error
+rmse.lse <- sqrt(mse.lse)                            # root mean square error
+r.squared.lse <- (cor(test.data$Customer_Value_stan, pred.lse))^2 # r-squared
+
+### base regression tree
+tree.model <- rpart(Customer_Value_stan ~ ., 
+                    data = train.data,
+                    method = "anova",     # For regression
+                    control = rpart.control(
+                      minsplit = 20,    # 3. Stopping rule: min observations to split
+                      minbucket = 7,    # Min observations in terminal node
+                      cp = seq(0, 0.05, 20), # Complexity parameter
+                      maxdepth = 5      # Maximum tree depth
+                    ))
+cp.table <- tree.model$cptable
+min.xerror <- min(cp.table[, "xerror"])
+min.cp.row <- which.min(cp.table[, "xerror"])
+min.cp <- cp.table[min.cp.row, "CP"]
+## 
+pruned.tree.min.cp <- prune(tree.model, cp = min.cp)
+pred.min.cp <- predict(pruned.tree.min.cp, newdata = test.data)
+# performance measures
+mae.tree.min.cp <- mean(abs(test.data$Customer_Value_stan - pred.min.cp))   # MAD
+mse.tree.min.cp <- mean((test.data$Customer_Value_stan - pred.min.cp)^2)
+rmse.tree.min.cp <- sqrt(mse.tree.min.cp)                    # MSE
+r.squared.tree.min.cp <- cor(test.data$Customer_Value_stan, pred.min.cp)^2  # R.sq
+
+### bagging regression: from the previous section
+BaggPerf <- baggedError 
+
+### Performance Comparison Table
+Errors <- cbind(MAE = c(mae.lse, mae.tree.min.cp, BaggPerf[3], RF.performance[1]),
+                RMSE = c(rmse.lse, rmse.tree.min.cp, BaggPerf[1], RF.performance[2]),
+                r.squared = c(r.squared.lse, r.squared.tree.min.cp, BaggPerf[2],RF.performance[3]))
+rownames(Errors) = c("LS Regression", "Regression Tree", "BAGGING", "Random Forest")
+pander(Errors)
+
+
+```
+
+```{r}
+# View variable importance
+varImpPlot(final.rf, pch = 19, main = "Variable Importance")
+
+```
+
+### RF Classification
+
+The random forest classification model was tuned with mtry = 5, 300 trees, nodesize = 10, and maxnodes = 20, achieving a best AUC of 0.966 during tuning. When evaluated on the test data, it produced an AUC of 0.9534, indicating excellent model performance in distinguishing between churn and non-churn customers. An AUC above 0.95 suggests that the model has a high level of discriminative power, making it highly reliable for predicting customer churn. The result highlights that the model effectively captures important patterns in customer behavior, making it a strong tool for identifying high-risk customers and supporting proactive retention strategies.
+
+```{r}
+# library(randomForest)
+# library(caret)
+# library(pROC)
+
+
+
+set.seed(123)
+train.idx <- createDataPartition(callcenter.data$Churn, p = 0.7, list = FALSE)
+train.data <- callcenter.data[train.idx, ]
+test.data <- callcenter.data[-train.idx, ]
+
+# cross-validation setting
+k = 5
+train.size <- dim(train.data)[1]  # training data size
+fold.size <- floor(train.size/k)  # fold size
+
+##
+tune.grid <- expand.grid(
+  mtry = c(2, 3, 4, 5),
+  ntree = c(100, 300, 500),
+  nodesize = c(1, 3, 5, 10),
+  maxnodes = c(5, 10, 20, NULL)
+)
+### store hyperparameters and avg of cv AUC
+results <- data.frame()
+best.auc <- 0.5         # place-holder of AUC, 0.5 = random guess
+best.hyp.params <- list()   # update the hyperparameter list according to the best auc
+
+##
+for (i in 1:nrow(tune.grid)){
+  current.tune.params <- tune.grid[i, ]  # subset of DATA FRAME!! 
+  cv.auc <- rep(0,k)
+  ##
+  for (j in 1:k){
+      cv.id <- (1 + (j-1)*fold.size):(j*fold.size)
+      cv.train <- train.data[-cv.id, ]
+      cv.valid <- train.data[cv.id, ]
+      ##
+       rf.cv <- randomForest(
+                   Churn ~ .,
+                   data = cv.train,
+                   mtry = current.tune.params$mtry,
+                   ntree = current.tune.params$ntree,
+                   nodesize = current.tune.params$nodesize,
+                   maxnodes = current.tune.params$maxnodes)
+       ##
+       prob.cv <- predict(rf.cv, cv.valid, type = "prob")[, 1]
+       cv.auc[j] <- auc(roc(cv.valid$Churn, prob.cv))
+      }
+      ##
+      # Average RMSE across folds
+      avg.auc <- mean(cv.auc)  
+      ##
+      # Store results: the data frame defined to store combinations of hyperparameters
+      # and the resulting mean RMSEs from cross-validation
+      results <- rbind(results, data.frame(
+                   mtry = current.tune.params$mtry,
+                   ntree = current.tune.params$ntree,
+                   nodesize = current.tune.params$nodesize,
+                   maxnodes = current.tune.params$maxnodes,
+                   auc = avg.auc))
+  
+     # Update best parameters if current model is better
+     if(avg.auc > best.auc) {
+           best.auc <- avg.auc
+           best.hyp.params <- current.tune.params }
+    
+}
+pander(data.frame(cbind(best.hyp.params,best.auc)))    # resulting tuned hyperparameters
+
+```
+```{r}
+##
+final.rf.cls <- randomForest(
+      Churn ~ .,
+      data = train.data,
+      ntree = best.hyp.params$ntree,
+      mtry = best.hyp.params$mtry,
+      nodesize = best.hyp.params$nodesize,
+      maxnodes = current.tune.params$maxnodes,
+      importance = TRUE
+     )
+
+test.pred <- predict(final.rf.cls, test.data)
+test.prob <- predict(final.rf.cls, test.data, type = "prob")
+rf.roc <- roc(test.data$Churn, test.prob[, 1])
+test.auc <- auc(rf.roc)
+#confusionMatrix(test.pred, test.data$diabetes)
+test.auc
+
+
+# Variable Importance
+varImpPlot(final.rf.cls, pch = 19, main = "Variable Importance of RF Classification" )
+
+
+
+
+```
+
+**Comparison to competitors**
+
+```{r}
+
+########################
+###  logistic regression
+logit.fit <- glm(Churn ~ ., data = train.data, family = binomial)
+AIC.logit <- step(logit.fit, direction = "both", trace = 0)
+pred.logit <- predict(AIC.logit, test.data, type = "response")
+
+# Build the initial classification tree
+tree.model <- rpart(Churn ~ ., 
+                    data = train.data,
+                    method = "class",   # classification tree
+                    parms = list(split = "gini",  # Using Gini index
+                                 # FN cost = 1, FP cost = 0.5
+                                 loss = matrix(c(0, 0.5, 1, 0), nrow = 2)  
+                                 ),
+                    control = rpart.control(minsplit = 15,  # Min 15 obs to split
+                                           minbucket = 5,   # Min 7 obs in leaf
+                                           # Complexity parameter
+                                           cp = 0.001, # complex parameter
+                                           maxdepth = 5))   # Max tree depth
+# Find the optimal cp value that minimizes cross-validated error
+min.cp <- tree.model$cptable[which.min(tree.model$cptable[,"xerror"]),"CP"]
+pruned.tree.min <- prune(tree.model, cp = min.cp)
+
+
+# BAGGING
+# Create a grid of hyperparameter combinations
+hyper.grid <- expand.grid(
+  nbagg = c(25, 50, 100),
+  minsplit = c(5, 10, 20),
+  maxdepth = c(5, 10, 20),
+  cp = c(0.01, 0.001)
+)
+# Initialize a results dataframe
+results <- data.frame() # store values of tuned hyperparameters
+best.accuracy <- 0      # store accuracy
+best.params <- list()   # store best values of hyperparameter
+
+# Loop through each hyperparameter combination
+for(i in 1:nrow(hyper.grid)) {
+  # Get current hyperparameters
+  params <- hyper.grid[i, ]
+  
+  # Set rpart control parameters
+  rpart.control <- rpart.control(
+    minsplit = params$minsplit,
+    maxdepth = params$maxdepth,
+    cp = params$cp
+  )
+  
+  # Train bagging model
+  bag.model <- bagging(
+    Churn ~ .,
+    data = train.data,
+    nbagg = params$nbagg,
+    coob = TRUE,
+    control = rpart.control
+  )
+  
+  # Make predictions: default cut-off 0.5
+  preds <- predict(bag.model, newdata = test.data)
+  
+  # Calculate accuracy
+  cm <- confusionMatrix(preds, test.data$Churn)
+  accuracy <- cm$overall["Accuracy"]
+  
+  # Store results
+  results <- rbind(results, data.frame(
+    nbagg = params$nbagg,
+    minsplit = params$minsplit,
+    maxdepth = params$maxdepth,
+    cp = params$cp,
+    Accuracy = accuracy
+  ))
+  
+  # Update best parameters if current model is better
+  if(accuracy > best.accuracy) {
+    best.accuracy <- accuracy
+    best.params <- params
+  }
+}
+# Set rpart control with best parameters
+best.control <- rpart.control(
+  minsplit = best.params$minsplit,
+  maxdepth = best.params$maxdepth,
+  cp = best.params$cp
+)
+
+# Train final model
+final.bag.model <- bagging(
+  Churn ~ .,
+  data = train.data,
+  nbagg = best.params$nbagg,
+  coob = TRUE,
+  control = best.control
+)
+#pred.prob.bagg <- predict(final.bag.model, newdata = test.data, type = "prob")[,2]
+###
+# Prediction with three candidate models
+pruned.tree.min <- prune(tree.model, cp = min.cp)
+pred.prob.min <- predict(pruned.tree.min, test.data, type = "prob")[,2]
+pred.prob.bagg <- predict(final.bag.model, newdata = test.data, type = "prob")[,2]
+##
+# ROC object
+roc.tree.min <- roc(test.data$Churn, pred.prob.min)
+roc.logit <- roc(test.data$Churn, pred.logit)
+roc.bagg <- roc(test.data$Churn, pred.prob.bagg)
+roc.rf <- roc(test.data$Churn, test.prob[, 1])
+
+##
+##
+### Sen-Spe
+bagg.sen <- roc.bagg$sensitivities
+bagg.spe <- roc.bagg$specificities
+#
+tree.min.sen <- roc.tree.min$sensitivities
+tree.min.spe <- roc.tree.min$specificities
+#
+logit.sen <- roc.logit$sensitivities
+logit.spe <- roc.logit$specificities
+#
+rf.sen <- roc.rf$sensitivities
+rf.spe <- roc.rf$specificities
+
+## AUC
+auc.bagg <- roc.bagg$auc
+auc.tree.min <- roc.tree.min$auc
+auc.logit <- roc.logit$auc
+auc.rf <- roc.rf$auc
+###
+###
+plot(1-logit.spe, logit.sen,  
+     xlab = "1 - specificity",
+     ylab = "sensitivity",
+     col = "darkred",
+     type = "l",
+     lty = 1,
+     lwd = 1,
+     main = "ROC: Classification Models")
+lines(1-bagg.spe, bagg.sen, 
+      col = "blue",
+      lty = 1,
+      lwd = 1)
+lines(1-tree.min.spe, tree.min.sen,      
+      col = "orange",
+      lty = 1,
+      lwd = 1)
+lines(1-rf.spe, rf.sen,      
+      col = "purple4",
+      lty = 1,
+      lwd = 1)
+abline(0,1, col = "skyblue3", lty = 2, lwd = 2)
+legend("bottomright", c("Logistic", "bagg", "Tree Min", "Random Forest"),
+       lty = c(1,1,1), lwd = rep(1,3),
+       col = c("red", "blue", "orange", "purple4"),
+       bty="n",cex = 0.8)
+## annotation - AUC
+text(0.8, 0.46, paste("Logistic AUC: ", round(auc.logit,4)), cex = 0.8)
+text(0.8, 0.4, paste("Bagg AUC: ", round(auc.bagg,4)), cex = 0.8)
+text(0.8, 0.34, paste("Tree Min AUC: ", round(auc.tree.min,4)), cex = 0.8)
+text(0.8, 0.28, paste("Forest AUC: ", round(auc.rf,4)), cex = 0.8)
+
+
+```
+
+## SVM Based Methods
+
+### Support Vector Machine for Classification
+
+The Support Vector Machine (SVM) classification model using a radial kernel achieved a high accuracy of 94.5% and an AUC of 0.9662, indicating strong overall predictive performance. The confusion matrix shows that the model correctly identified 758 non-churn (true negatives) and 135 churn cases (true positives), with relatively low misclassifications—24 false positives and 28 false negatives. The high AUC reflects the model's excellent ability to distinguish between churn and non-churn customers across various thresholds. Overall, the SVM model performs robustly and is well-suited for predicting customer churn, especially when both accuracy and class separation are critical.
+
+```{r}
+
+# Install and load the e1071 package
+# library(e1071)
+##
+
+
+
+## two-way data splitting
+set.seed(123)    # For reproducibility
+index <- sample(1:nrow(callcenter.data), 0.7 * nrow(callcenter.data))
+train.data <- callcenter.data[index, ]
+test.data <- callcenter.data[-index, ]
+##
+## Set up custom cross-validation control
+tune_control <- tune.control(
+  cross = 5,  # Use 5-fold cross-validation, the default is 10-fold cross-validation
+  nrepeat = 1 # Number of repetitions (for repeated cross-validation)
+)
+## 
+## Perform a grid search for the best hyperparameters
+tune.RBF <- tune(
+  svm,          # using the primary svm() algorithm to tune parameter
+  Churn ~ ., # model formula
+  data = train.data,
+  kernel = "radial",    # You can change the kernel if needed
+  ranges = list(
+    cost = 10^(-1:2),   # tune the hyperparameter C in the loss function
+    gamma = c(0.1, 0.5, 1, 2)  # the hyper parameter in the RBF kernel
+  ),
+  tunecontrol = tune_control  # Use custom cross-validation settings
+)
+# Print the tuning results for inspection
+# print(tune_result)
+##
+## Extract the best model and hyperparameters
+best.RBF <- tune.RBF$best.model
+best.cost.RBF <- best.RBF$cost
+best.gamma.RBF <- best.RBF$gamma
+
+# Print the best hyperparameters onor inspection
+# cat("Best Cost:", best_cost, "\n")
+# cat("Best Gamma:", best_gamma, "\n")
+##
+## Train the final SVM model with the best hyperparameters
+final.RBF.class <- svm(
+  Churn ~ .,
+  data = train.data,
+  kernel = "radial",
+  cost = best.cost.RBF,
+  gamma = best.gamma.RBF
+)
+
+# Print the final model - for inspection
+# print(final_model)
+##
+## Make predictions on the test set: type = "class"
+pred.RBF.class <- predict(final.RBF.class, test.data, type = "class")
+
+# Evaluate the predictions (e.g., using a confusion matrix)-Using default cutoff 0.5
+confusion.matrix.RBF <- table(Predicted = pred.RBF.class, Actual = test.data$Churn)
+print(confusion.matrix.RBF)
+
+
+```
+**Accuracy**
+
+```{r}
+# Calculate accuracy
+accuracy <- sum(diag(confusion.matrix.RBF)) / sum(confusion.matrix.RBF)
+cat("\n\n Accuracy:", accuracy, "\n")
+```
+
+
+
+**ROC CUrves**
+
+
+```{r}
+##
+## Set up custom cross-validation control
+tune.control <- tune.control(
+  cross = 5,  # Use 5-fold cross-validation, the default is 10-fold cross-validation
+  nrepeat = 1 # Number of repetitions (for repeated cross-validation)
+)
+## 
+## Perform a grid search for the best hyperparameters
+tune.lin <- tune(
+  svm,          # using the primary svm() algorithm to tune parameter
+  Churn ~ ., # model formula
+  data = train.data,
+  kernel = "linear",    # You can change the kernel if needed
+  ranges = list(
+    cost = 10^(-1:2)   # tune the hyperparameter C in the loss function
+  ),
+  tunecontrol = tune.control  # Use custom cross-validation settings
+)
+# Print the tuning results for inspection
+# print(tune_result)
+##
+## Extract the best model and hyperparameters
+best.lin <- tune.lin$best.model
+best.cost.lin <- best.lin$cost
+# Print the best hyperparameters for inspection
+# cat("Best Cost:", best_cost, "\n")
+# cat("Best Gamma:", best_gamma, "\n")
+##
+## Train the final SVM model with the best hyperparameters
+final.lin <- svm(
+  Churn ~ .,
+  data = train.data,
+  kernel = "linear",
+  cost = best.cost.lin,
+  probability = TRUE
+)
+
+## Request to return probabilities in final.RBF
+
+final.RBF <- svm(
+  Churn ~ .,
+  data = train.data,
+  kernel = "radial",
+  cost = best.cost.RBF,
+  gamma = best.gamma.RBF,
+  probability = TRUE
+)
+########################
+###  logistic regression
+logit.fit <- glm(Churn ~ ., data = train.data, family = binomial)
+AIC.logit <- step(logit.fit, direction = "both", trace = 0)
+pred.logit <- predict(AIC.logit, test.data, type = "response")
+
+###
+####################
+# ROC Curve and AUC
+pred.prob.lin <- predict(final.lin, test.data, probability = TRUE)
+pred.prob.RBF <- predict(final.RBF, test.data, probability = TRUE)
+##
+## extracting probabilities
+prob.linear <- attr(pred.prob.lin, "probabilities")[, 2]
+prob.radial <- attr(pred.prob.RBF, "probabilities")[, 2]
+###
+roc_lin <- roc(test.data$Churn, prob.linear)
+roc_RBF <- roc(test.data$Churn, prob.radial)
+roc_logit <- roc(test.data$Churn, pred.logit)
+### Sen-Spe
+lin.sen <- roc_lin$sensitivities
+lin.spe <- roc_lin$specificities
+rad.sen <- roc_RBF$sensitivities
+rad.spe <- roc_RBF$specificities
+logit.sen <- roc_logit$sensitivities
+logit.spe <- roc_logit$specificities
+## AUC
+auc.lin <- roc_lin$auc
+auc.rad <- roc_RBF$auc
+auc.logit <- roc_logit$auc
+## Plotting ROC curves
+
+plot(1-lin.spe, lin.sen,  
+     xlab = "1 - specificity",
+     ylab = "sensitivity",
+     col = "darkred",
+     type = "l",
+     lty = 1,
+     lwd = 1,
+     main = "ROC Curves of SVM")
+lines(1-rad.spe, rad.sen, 
+      col = "blue",
+      lty = 1,
+      lwd = 1)
+lines(1-logit.spe, logit.sen,      
+      col = "orange",
+      lty = 1,
+      lwd = 1)
+abline(0,1, col = "skyblue3", lty = 2, lwd = 2)
+abline(v=c(0.049,0.151), lty = 3, col = "darkgreen")
+legend("bottomright", c("Linear Kernel", "Radial Kernel", "Logistic Regression"),
+       lty = c(1,1,1), lwd = rep(1,3),
+       col = c("red", "blue", "orange"),
+       bty="n",cex = 0.8)
+## annotation - AUC
+text(0.8, 0.46, paste("Linear AUC: ", round(auc.lin,4)), cex = 0.8)
+text(0.8, 0.4, paste("Radial AUC: ", round(auc.rad,4)), cex = 0.8)
+text(0.8, 0.34, paste("Logistic AUC: ", round(auc.logit,4)), cex = 0.8)
+
+```
+
+
+### Support Vector Machine for Regression
+
+In the context of predicting customer value, the Support Vector Regression (SVR) models were evaluated for their predictive performance. The RBF SVR achieved the best results with a Mean Squared Error (MSE) of 0.0063 and Mean Absolute Error (MAE) of 0.0601, indicating highly accurate predictions with minimal error. In contrast, the Linear SVR and Least Squares Estimation (LSE) models showed higher error values, suggesting they were less effective in capturing the underlying patterns in customer value data. These results highlight that the non-linear RBF SVR model is best suited for modeling complex relationships in customer behavior, making it the most reliable approach for accurately predicting customer value in this scenario.
+
+
+
+```{r}
+
+# Load dataset
+#library(e1071)
+#library(MASS)
+#####
+#str(callcenter.data)
+# Split data into features (X) and target (y)
+X <- df_numeric[, -8]  # All columns except the target variable
+y <- df_numeric[, 8]   # Target variable (median house value)
+#####
+# Split data into training and testing sets
+set.seed(123)
+train.index <- sample(1:nrow(df_numeric), 0.8 * nrow(df_numeric))
+X.train <- X[train.index, ]
+y.train <- y[train.index]
+X.test <- X[-train.index, ]
+y.test <- y[-train.index]
+#####
+callcenter.train <- df_numeric[train.index, ]
+callcenter.test <- df_numeric[-train.index, ]
+#####
+## Set up custom cross-validation control
+tune.control <- tune.control(
+  cross = 5,  # Use 5-fold cross-validation, the default is 10-fold cross-validation
+  nrepeat = 1 # Number of repetitions (for repeated cross-validation)
+)
+#####
+# Perform grid search for hyperparameter tuning: RBF kernel is used
+tune.RBF <- tune(svm, train.x = X.train, train.y = y.train, 
+                    ranges = list(epsilon = seq(0.1, 0.5, 0.1), 
+                                  cost = c(1, 10, 100), 
+                                  gamma = c(0.01, 0.1, 1)), # Hyperpar in RBF
+                    tunecontrol = tune.control(sampling = "cross", 
+                                               cross = 5) # 5-fold cross-validation
+                    )
+####
+# Display the best parameters
+#print(tune.result$best.parameters)
+#####
+# Train the final model using the best parameters
+final.RBF<- svm(X.train, y.train, 
+                   type = "eps-regression",  # Use "nu-regression" for nu-SVR
+                   kernel = "radial", 
+                   epsilon = tune.RBF$best.parameters$epsilon, 
+                   cost = tune.RBF$best.parameters$cost, 
+                   gamma = tune.RBF$best.parameters$gamma)
+#####
+# Make predictions on the test set
+pred.RBF <- predict(final.RBF, X.test)
+
+# Evaluate performance
+mse.RBF <- mean((y.test - pred.RBF)^2)    # mean square error
+mae.RBF <- mean(abs(y.test - pred.RBF))   # mean absolute error
+
+#### linear kernel
+
+# Perform grid search for hyperparameter tuning: RBF kernel is used
+tune.lin <- tune(svm, train.x = X.train, train.y = y.train, 
+                    ranges = list(epsilon = seq(0.1, 0.5, 0.1), 
+                                  cost = c(1, 10, 100)), 
+                    tunecontrol = tune.control(sampling = "cross", 
+                                               cross = 5) # 5-fold cross-validation
+                    )
+####
+# Display the best parameters
+#print(tune.result$best.parameters)
+#####
+# Train the final model using the best parameters
+final.lin<- svm(X.train, y.train, 
+                   type = "eps-regression",  # Use "nu-regression" for nu-SVR
+                   kernel = "linear", 
+                   epsilon = tune.lin$best.parameters$epsilon, 
+                   cost = tune.lin$best.parameters$cost)
+#####
+# Make predictions on the test set
+pred.lin <- predict(final.lin, X.test)
+
+# Evaluate performance
+mse.lin <- mean((y.test - pred.lin)^2)    # mean square error
+mae.lin <- mean(abs(y.test - pred.lin))   # mean absolute error
+
+
+```
+
+
+```{r}
+
+## ordinary LSE regression model with stepwise variable selection
+lse.fit <- lm(Customer_Value_stan~.,data=callcenter.train)
+AIC.fit <- stepAIC(lse.fit,direction="both", trace = FALSE)
+pred.lse <- predict(AIC.fit, X.test)
+mse.lse <- mean((y.test - pred.lse)^2)    # mean square error
+mae.lse <- mean(abs(y.test - pred.lse))   # mean absolute error
+###
+par(mfrow=c(2,2), mar=c(2,2,2,2))
+plot(AIC.fit)
+
+```
+```{r}
+
+
+
+###
+Performance <- data.frame(RBF.SVR=c(mse.RBF, mae.RBF),
+                          Linear.SVR = c(mse.lin, mae.lin),
+                          LSE.Reg =c(mse.lse, mae.lse))
+row.names(Performance) <- c("MSE", "MAE")
+##
+pander(Performance)
+
+
+```
+
+
+
+
+## Model Comparison
+
+**Classification Model Comparison: **
+
+Based on the comparison of classification models for predicting customer churn, the Support Vector Machine with RBF kernel (SVM-RBF) outperformed all other models, achieving the highest accuracy (97.35%) and the highest AUC (0.9662). This indicates that it not only made the most correct predictions overall but also had the best ability to distinguish between churn and non-churn cases. While other models like Random Forest and Logistic Regression also showed strong performance with high AUCs (0.9534 and 0.9423, respectively), their accuracy was lower. The decision on the best model is based on a combination of high accuracy and AUC, where SVM-RBF clearly leads, making it the most effective model for this classification task.
+
+```{r}
+# Classification Performance Summary (Updated to include RF)
+classification_results <- data.frame(
+  Model = c("CART (1SE)", "CART (Min)", "SVM - Linear", "SVM - RBF", 
+            "Logistic Regression", "Random Forest"),
+  Accuracy = c(
+    mean(pred.label.1SE == test.data$Churn),
+    mean(pred.label.min == test.data$Churn),
+    sum(diag(confusion.matrix.RBF)) / sum(confusion.matrix.RBF),
+    sum(diag(table(Predicted = predict(final.RBF.class, test.data), Actual = test.data$Churn))) / nrow(test.data),
+    sum((pred.logit > 0.5) == (test.data$Churn == 1)) / nrow(test.data),
+    mean(test.pred == test.data$Churn)  # RF classification accuracy
+  ),
+  AUC = c(
+    as.numeric(auc.tree.1SE),
+    as.numeric(auc.tree.min),
+    as.numeric(auc.lin),
+    as.numeric(auc.rad),
+    as.numeric(auc.logit),
+    as.numeric(test.auc)  # RF classification AUC
+  )
+)
+
+pander::pander(classification_results, caption = "Classification Model Comparison: Accuracy and AUC")
+
+
+```
+
+**Regression Models Comparison:**
+
+Based on the regression model comparison for predicting customer value, the Support Vector Machine with RBF kernel (SVM-RBF) achieved the lowest MSE (0.0063) and lowest MAE (0.0601), indicating the most accurate and precise predictions overall. Although Random Forest had the highest R-squared (0.9686), showing strong explanatory power, its error metrics were slightly higher than those of SVM-RBF. Since lower MSE and MAE indicate better predictive performance, especially when R-squared is not available for SVM, SVM-RBF is considered the best model for this task. The selection is based on its superior ability to minimize prediction errors, making it the most effective for modeling customer value.
+
+```{r}
+
+# Regression Performance Summary (Updated to include RF)
+regression_results <- data.frame(
+  Model = c("CART - Best CP", "CART - Min CP", "SVM - Linear", 
+            "SVM - RBF", "OLS Regression", "Random Forest"),
+  MSE = c(
+    mse.tree.best.cp,
+    mse.tree.min.cp,
+    mse.lin,
+    mse.RBF,
+    mse.lse,
+    RF.performance[2]^2  # RMSE squared = MSE for RF
+  ),
+  MAE = c(
+    NA,
+    mae.tree.min.cp,
+    mae.lin,
+    mae.RBF,
+    mae.lse,
+    RF.performance[1]
+  ),
+  R_squared = c(
+    r.squared.tree.best.cp,
+    r.squared.tree.min.cp,
+    NA,
+    NA,
+    r.squared.lse02,
+    RF.performance[3]
+  )
+)
+
+pander::pander(regression_results, caption = "Regression Model Comparison: MSE, MAE, and R-squared")
+
+
+```
+
+## Conclusion & Recommendations
+
+This analysis explored a range of regression and classification techniques to predict **customer value** and **churn status**, respectively, using a telecommunications dataset. The models were tuned and evaluated based on multiple performance metrics such as **MSE, MAE, R-squared** for regression, and **Accuracy, AUC, and Confusion Matrices** for classification.
+
+For regression models predicting customer value:
+- **SVM with RBF kernel** showed the best overall performance with the lowest MSE (0.0063) and MAE (0.0601), making it the most accurate model for estimating individual customer value.
+- **Random Forest** regression also performed well with the highest R-squared (0.9686) and competitive error metrics, indicating strong explanatory power and robustness.
+- **CART (Min CP)** provided a good balance between performance and interpretability, with low errors and high R-squared.
+
+For classification models predicting churn:
+- **SVM with RBF kernel** again outperformed others with highest accuracy (97.35%) and highest AUC (0.9662), showing excellent discrimination between churners and non-churners.
+- **Random Forest** and **Logistic Regression** also achieved high AUC values (0.9534 and 0.9423), indicating strong classification capability.
+- Simpler models like CART (1SE and Min) had relatively lower performance, but still offered valuable interpretability.
+
+Across both tasks, SVM with RBF consistently demonstrated superior predictive performance, especially in handling complex, non-linear relationships within the data.
+
+
+**Recommendations**
+
+1. **Adopt SVM-RBF Models**: For both customer value prediction and churn classification, the SVM with RBF kernel yielded the best performance and should be prioritized for deployment in predictive analytics pipelines.
+
+2. **Use Random Forests for Interpretability and Robustness**: Where model transparency and feature importance insights are necessary (e.g., marketing or customer support decisions), Random Forest offers a strong alternative with competitive performance.
+
+3. **Integrate Predictive Insights into Business Strategy**:
+   - Use churn prediction scores to identify high-risk customers and design targeted retention campaigns.
+   - Leverage customer value predictions to segment customers and allocate resources efficiently for personalized offers or premium service targeting.
+
+4. **Monitor and Update Models Regularly**: Customer behavior may evolve, so models should be retrained periodically with updated data to maintain accuracy.
+
+5. **Further Exploratory Analysis**: Investigate the influence of top predictors (e.g., frequency of use, SMS, distinct numbers called) to design proactive engagement strategies aimed at improving customer retention and value.
+
+By implementing these models strategically, the organization can enhance customer relationship management, reduce churn, and increase long-term profitability.
+
+
